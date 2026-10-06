@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <link
+    rel="icon"
+    href="data:,"
+  />
+
+  <link
+    rel="stylesheet"
+    href="./build/potree/potree.css"
+  />
+
+  <link
+    rel="stylesheet"
+    href="./libs/jquery-ui/jquery-ui.min.css"
+  />
+
+  <link
+    rel="stylesheet"
+    href="./libs/openlayers3/ol.css"
+  />
+
+  <link
+    rel="stylesheet"
+    href="./libs/spectrum/spectrum.css"
+  />
+
+  <link
+    rel="stylesheet"
+    href="./libs/jstree/themes/mixed/style.css"
+  />
+
+  <link
+    rel="stylesheet"
+    href="./style.css"
+  />
+</head>
+
+<body>
+  <div class="app-shell">
+
+    <!-- TOP BAR --------------------------------------------------------- -->
+
+    <header class="topbar">
+      <div class="brand">
+        <div
+          id="brandEyebrow"
+          class="eyebrow"
+        ></div>
+
+        <div
+          id="brandTitle"
+          class="brand-title"
+        ></div>
+
+        <div
+          id="brandSubtitle"
+          class="brand-subtitle"
+        ></div>
+      </div>
+
+      <div class="topbar-actions">
+        <a
+          id="addModel"
+          class="button button-secondary"
+          href="#"
+          target="_blank"
+          rel="noopener"
+          title="Add COPC-Model through Github"
+        >
+          Add Model
+        </a>
+
+        <div class="screenshot-export-controls">
+          <button
+            id="exportScreenshot"
+            class="toolbar-button"
+            type="button"
+            title="Export PNG Image to Desktop"
+          >
+            Export PNG
+          </button>
+
+          <select
+            id="screenshotScale"
+            class="toolbar-button screenshot-scale-select"
+            aria-label="Screenshot resolution"
+            title="1x-5x Viewer Resolution"
+          >
+            <option value="1">1x</option>
+            <option value="2">2x</option>
+            <option value="3" selected>3x</option>
+            <option value="4">4x</option>
+            <option value="5">5x</option>
+          </select>
+        </div>
+
+        <button
+          id="OpenDescription"
+          class="toolbar-button"
+          type="button"
+        >
+          Read Me
+        </button>
+      </div>
+    </header>
+
+
+    <!-- MAIN WORKSPACE -------------------------------------------------- -->
+
+    <main class="workspace">
+
+      <!-- SCAN LIBRARY -------------------------------------------------- -->
+
+      <aside class="library-panel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">
+              Model library
+            </div>
+
+            <div
+              id="scanCount"
+              class="panel-subtitle"
+            >
+              0 scans
+            </div>
+          </div>
+
+          <div class="panel-header-actions">
+            <button
+              id="toggleLibrary"
+              class="icon-button dropdown-toggle"
+              type="button"
+              title="Open or close scan library"
+              aria-expanded="true"
+              aria-controls="libraryDropdownContent"
+            >
+              <svg
+                class="dropdown-arrow-svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="18 10 12 4 6 10"></polyline>
+                <polyline points="6 14 12 20 18 14"></polyline>
+              </svg>
+            </button>
+
+            <button
+              id="refreshLibrary"
+              class="icon-button"
+              title="Refresh library"
+              type="button"
+            >
+              ↻
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="libraryDropdownContent"
+          class="panel-dropdown-content"
+        >
+          <div
+            id="libraryList"
+            class="library-list"
+          ></div>
+
+          <div
+            id="libraryEmpty"
+            class="empty-state"
+          >
+            <div class="empty-icon"></div>
+
+            <strong>
+              No scans found
+            </strong>
+
+            <span>
+              Administrator uploads will appear here permanently.
+            </span>
+          </div>
+        </div>
+      </aside>
+
+
+      <!-- VIEWER -------------------------------------------------------- -->
+
+      <section class="viewer-panel">
+        <div
+          id="potree_render_area"
+          class="viewer"
+        ></div>
+
+        <div
+          id="potree_sidebar_container"
+        ></div>
+
+        <div class="viewer-overlay">
+          <div class="viewer-status">
+            <span
+              id="viewerStatusDot"
+              class="status-dot status-idle"
+            ></span>
+
+            <span id="viewerStatus">
+              Starting viewer...
+            </span>
+          </div>
+
+          <div class="viewer-help">
+            Orbit: leftMouse · Pan: rightMouse · Zoom: wheel · arrow-Keys · AWSD-Keys · ./, Speed
+          </div>
+        </div>
+
+        <div
+          id="loadingOverlay"
+          class="loading-overlay hidden"
+        >
+          <div class="loading-spinner"></div>
+
+          <div id="loadingMessage">
+            Loading point cloud...
+          </div>
+        </div>
+
+        <div class="viewer-toolbar">
+          <button
+            id="resetView"
+            type="button"
+            title="Zoom to All"
+            style="background: none; border: none; cursor: pointer;"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect
+                x="3"
+                y="3"
+                width="18"
+                height="18"
+                rx="2"
+              />
+
+              <path
+                d="m15 9 3-3m0 0h-4m4 0v4M9 15l-3 3m0 0h4m-4 0v-4"
+              />
+            </svg>
+          </button>
+
+          <button
+            id="fitView"
+            type="button"
+            title="Zoom to Selected"
+            style="background: none; border: none; cursor: pointer;"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+              <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+              <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+              <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+              <circle
+                cx="12"
+                cy="12"
+                r="2"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+
+          <button
+            id="downloadScan"
+            type="button"
+            title="Download"
+            style="background: none; border: none; cursor: pointer;"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 5v11" />
+              <path d="m19 12-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+      </section>
+
+
+      <!-- INSPECTOR ----------------------------------------------------- -->
+
+      <aside class="inspector-panel">
+        <div class="inspector-dropdown">
+          <div
+            id="inspectorDropdownContent"
+            class="panel-dropdown-content hidden"
+          >
+            <div
+              id="inspectorEmpty"
+              class="empty-state"
+            >
+              <div class="empty-icon">
+                ◇
+              </div>
+
+              <strong>
+                No scan selected
+              </strong>
+
+              <span>
+                Select a scan from the library.
+              </span>
+            </div>
+
+            <div
+              id="inspectorContent"
+              class="inspector-content hidden"
+            >
+              <section class="inspector-section">
+                <div class="section-heading">
+                  <span id="activeScanName">
+                    Scan
+                  </span>
+                </div>
+
+                <div class="metadata-grid">
+                  <div>
+                    <span>
+                      Format
+                    </span>
+
+                    <strong>
+                      COPC LAZ
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Loaded Points
+                    </span>
+
+                    <strong id="activePointCount">
+                      —
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      File size
+                    </span>
+
+                    <strong id="activeFileSize">
+                      —
+                    </strong>
+                  </div>
+                </div>
+              </section>
+
+              <section class="inspector-section">
+                <div class="section-heading">
+                  Appearance
+                </div>
+
+                <div class="control-toggle-row">
+                  <span class="control-label">
+                    Point display
+                  </span>
+
+                  <button
+                    id="pointDisplayMode"
+                    class="control-toggle"
+                    type="button"
+                    aria-pressed="false"
+                  >
+                    Depth-sized
+                  </button>
+                </div>
+
+                <label
+                  for="colorMode"
+                  class="control-label"
+                >
+                  Color mode
+                </label>
+
+                <select
+                  id="colorMode"
+                  class="control-input"
+                >
+                  <option value="RGB">
+                    RGB
+                  </option>
+
+                  <option value="ELEVATION">
+                    Elevation
+                  </option>
+
+                  <option value="INTENSITY">
+                    Intensity
+                  </option>
+
+                  <option value="CLASSIFICATION">
+                    Classification
+                  </option>
+
+                  <option value="RETURN_NUMBER">
+                    Return number
+                  </option>
+                </select>
+
+                <label
+                  for="pointSize"
+                  class="control-label"
+                >
+                  Point size
+
+                  <output id="pointSizeValue">
+                    1.5
+                  </output>
+                </label>
+
+                <input
+                  id="pointSize"
+                  class="range-input"
+                  type="range"
+                  min="0.01"
+                  max="8"
+                  step="0.05"
+                  value="0.5"
+                />
+
+                <label
+                  for="pointOpacity"
+                  class="control-label"
+                >
+                  Opacity
+
+                  <output id="pointOpacityValue">
+                    100%
+                  </output>
+                </label>
+
+                <input
+                  id="pointOpacity"
+                  class="range-input"
+                  type="range"
+                  min="0.1"
+                  max="1"
+                  step="0.05"
+                  value="1"
+                />
+
+                <label
+                  for="pointBudget"
+                  class="control-label"
+                >
+                  Point budget
+
+                  <output id="pointBudgetValue">
+                    30.0M
+                  </output>
+                </label>
+
+                <input
+                  id="pointBudget"
+                  class="range-input"
+                  type="range"
+                  min="250000"
+                  max="100000000"
+                  step="250000"
+                  value="3000000"
+                />
+              </section>
+
+              <section class="inspector-section">
+                <div class="section-heading">
+                  Sections
+                </div>
+
+                <label
+                  for="sectionMode"
+                  class="control-label"
+                >
+                  Section type
+                </label>
+
+                <select
+                  id="sectionMode"
+                  class="control-input"
+                >
+                  <option value="none">
+                    No section
+                  </option>
+
+                  <option value="horizontal">
+                    Horizontal section
+                  </option>
+
+                  <option value="vertical">
+                    Vertical section
+                  </option>
+                </select>
+
+                <div
+                  id="sectionAxisWrapper"
+                  class="hidden"
+                >
+                  <label
+                    for="sectionAxis"
+                    class="control-label"
+                  >
+                    Vertical axis
+                  </label>
+
+                  <select
+                    id="sectionAxis"
+                    class="control-input"
+                  >
+                    <option value="x">
+                      X axis
+                    </option>
+
+                    <option value="y">
+                      Y axis
+                    </option>
+                  </select>
+                </div>
+
+                <label
+                  for="sectionPosition"
+                  class="control-label"
+                >
+                  Position
+
+                  <output id="sectionPositionValue">
+                    —
+                  </output>
+                </label>
+
+                <input
+                  id="sectionPosition"
+                  class="range-input"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.5"
+                  disabled
+                />
+
+                <label
+                  for="sectionThickness"
+                  class="control-label"
+                >
+                  Thickness
+
+                  <output id="sectionThicknessValue">
+                    —
+                  </output>
+                </label>
+
+                <input
+                  id="sectionThickness"
+                  class="number-input"
+                  type="number"
+                  min="0.001"
+                  step="0.01"
+                  value="1"
+                  disabled
+                />
+
+                <div class="section-buttons">
+                  <button
+                    id="applySection"
+                    class="button button-secondary"
+                    type="button"
+                  >
+                    Apply
+                  </button>
+
+                  <button
+                    id="clearSection"
+                    class="button button-ghost"
+                    type="button"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </section>
+
+              <section class="inspector-section">
+                <div class="section-heading">
+                  <span>
+                    ⌖
+                  </span>
+
+                  Bounds
+                </div>
+
+                <div class="bounds-list">
+                  <div>
+                    <span>
+                      X
+                    </span>
+
+                    <strong id="boundsX">
+                      —
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Y
+                    </span>
+
+                    <strong id="boundsY">
+                      —
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Z
+                    </span>
+
+                    <strong id="boundsZ">
+                      —
+                    </strong>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <button
+            id="toggleInspector"
+            class="inspector-toggle"
+            type="button"
+            title="Open or close Inspector Settings"
+            aria-expanded="false"
+            aria-controls="inspectorDropdownContent"
+          >
+            <span class="inspector-toggle-text">
+              <span class="panel-title">
+                Inspector
+              </span>
+
+              <span class="panel-subtitle">
+                Active scan properties
+              </span>
+            </span>
+
+            <svg
+              class="dropdown-arrow-svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="18 10 12 4 6 10"></polyline>
+              <polyline points="6 14 12 20 18 14"></polyline>
+            </svg>
+          </button>
+        </div>
+      </aside>
+    </main>
+
+
+    <!-- STATUS BAR ------------------------------------------------------ -->
+
+    <footer class="statusbar">
+      <span id="statusMessage">
+        Starting viewer...
+      </span>
+
+      <div>
+        <span>
+          Accepted: .copc.laz, .las, .laz, .jpg, .jpeg, .png
+        </span>
+
+        <span>
+          Maximum: 95 MiB
+        </span>
+      </div>
+    </footer>
+  </div>
+
+
+  <!-- DYNAMIC IMAGE POPUPS ---------------------------------------------- -->
+
+  <!--
+    JavaScript creates one popup per image inside this container.
+    Do not put imagePopupImage, title bars, or resize handles here.
+  -->
+  <div
+    id="imagePopupContainer"
+    class="image-popup-container"
+  ></div>
+
+
+  <!-- DESCRIPTION DIALOG ----------------------------------------------- -->
+
+  <dialog
+    id="descriptionDialog"
+    class="description-dialog"
+    aria-labelledby="descriptionTitle"
+  >
+    <div class="description-dialog-inner">
+      <div class="description-dialog-header">
+        <h2 id="descriptionTitle">
+          Spatial Library - Read Me
+        </h2>
+
+        <button
+          id="closeDescription"
+          class="description-close"
+          type="button"
+          aria-label="Close description"
+        >
+          &times;
+        </button>
+      </div>
+
+      <div class="description-dialog-body">
+        <div id="descriptionContent"></div>
+      </div>
+    </div>
+  </dialog>
+
+
+  <!-- POTREE DEPENDENCIES ----------------------------------------------- -->
+
+  <script src="./libs/jquery/jquery-3.1.1.min.js"></script>
+  <script src="./libs/spectrum/spectrum.js"></script>
+  <script src="./libs/jquery-ui/jquery-ui.min.js"></script>
+  <script src="./libs/other/BinaryHeap.js"></script>
+  <script src="./libs/tween/tween.min.js"></script>
+  <script src="./libs/d3/d3.js"></script>
+  <script src="./libs/proj4/proj4.js"></script>
+  <script src="./libs/openlayers3/ol.js"></script>
+  <script src="./libs/i18next/i18next.js"></script>
+  <script src="./libs/jstree/jstree.js"></script>
+
+
+  <!-- COPC SUPPORT ------------------------------------------------------ -->
+
+  <script src="./libs/copc/index.js"></script>
+
+
+  <!-- POTREE ------------------------------------------------------------ -->
+
+  <script src="./build/potree/potree.js"></script>
+
+
+  <!-- LAS/LAZ SUPPORT --------------------------------------------------- -->
+
+  <script src="./libs/plasio/js/laslaz.js"></script>
+
+
+  <!-- APPLICATION ------------------------------------------------------- -->
+
+  <script src="./location-config.js"></script>
+  <script src="./location-loader.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
