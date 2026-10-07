@@ -1,22 +1,21 @@
 window.LOCATION_CONFIG = {
-  pageTitle: "Garden Venice",
+  pageTitle: "Giardino Minelli Spada, Venice",
 
   metaDescription:
-    "Cloud optimized point cloud viewer for Brienz/Brinzauls scans.",
+    "Cloud optimized point cloud viewer.",
 
   brandEyebrow:
     "© ETH ZURICH",
 
   brandTitle: `
-    VENEZIA<br>
-    GARDEN<br>
-    2026
+    Giardino<br>
+    Minelli Spada<br>
+    Venice
   `,
 
   brandSubtitle: `
     copc viewer & point cloud model interface | for collecting, storing and
-    visualizing spatial recordings |
-    beta version
+    visualizing spatial recordings Giardino Minelli Spada, Venice | Site Visit 2026
     <br><br>
     developed at Professur Voser, Institute for Landscape and Urban Studies,
     ETH Zürich | assisted by AI gpt 5.6
