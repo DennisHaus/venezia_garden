@@ -31,6 +31,28 @@ var CONFIG = {
   navigationSpeed:
     0.35,
 
+  /*
+    Mouse navigation: "orbit", "fly" or "walk" when the viewer opens
+    (location-config.js can set navigationMode too). The last mode a
+    visitor chose is remembered in their browser.
+  */
+  navigationMode:
+    "fly",
+
+  /* How far the view turns per pixel of mouse drag */
+  lookSensitivity:
+    0.004,
+
+  /* Smoothing in seconds: higher = softer, lower = more direct */
+  lookSmoothing:
+    0.06,
+
+  zoomSmoothing:
+    0.12,
+
+  glideTime:
+    0.25,
+
   screenshotScale:
     5,
 
@@ -708,15 +730,7 @@ function initializeViewer() {
       }
     }
 
-    if (
-      viewer.orbitControls &&
-      typeof viewer.setControls ===
-      "function"
-    ) {
-      viewer.setControls(
-        viewer.orbitControls
-      );
-    }
+    installNavigation();
 
     window.addEventListener(
       "resize",
@@ -5150,6 +5164,18 @@ function getNavigationKey(
   }
 
   if (
+    code === "keye"
+  ) {
+    return "e";
+  }
+
+  if (
+    code === "keyc"
+  ) {
+    return "c";
+  }
+
+  if (
     code === "arrowup"
   ) {
     return "arrowup";
@@ -5341,6 +5367,26 @@ function moveViewerWithKeyboard(
   }
 
   direction.normalize();
+
+  /*
+    Walk mode: move level, whatever the camera looks at.
+  */
+  if (
+    navigation.mode ===
+    "walk"
+  ) {
+    var level =
+      directionFromYawPitch(
+        view.yaw,
+        0
+      );
+
+    direction.set(
+      level.x,
+      level.y,
+      0
+    );
+  }
 
   var right =
     direction.clone();
@@ -5599,6 +5645,10 @@ function moveViewerWithKeyboard(
   view.position.add(
     displacement
   );
+
+  navigationCameraMoved(
+    displacement
+  );
 }
 
 function clearNavigationKeys() {
@@ -5660,6 +5710,17 @@ function navigationAnimationLoop(
   moveViewerWithKeyboard(
     deltaSeconds
   );
+
+  if (
+    navigation.controls &&
+    performance.now() -
+    navigation.lastUpdate >
+    250
+  ) {
+    updateNavigation(
+      deltaSeconds
+    );
+  }
 
   window.requestAnimationFrame(
     navigationAnimationLoop
@@ -6627,6 +6688,10 @@ function setOrbitCenter(
     return;
   }
 
+  setNavigationPivot(
+    center
+  );
+
   var view =
     viewer.scene.view;
 
@@ -7526,33 +7591,8 @@ function resetView() {
 
 
 function activateOrbitMode() {
-  if (
-    viewer &&
-    viewer.orbitControls &&
-    typeof viewer.setControls ===
-    "function"
-  ) {
-    viewer.setControls(
-      viewer.orbitControls
-    );
-  }
-
-  var button =
-    getElement(
-      "orbitMode"
-    );
-
-  if (
-    button
-  ) {
-    button.classList.add(
-      "active"
-    );
-  }
-
-  setStatus(
-    "Orbit navigation active",
-    "idle"
+  setNavigationMode(
+    "orbit"
   );
 }
 
@@ -9056,6 +9096,28 @@ window.setTimeout(
     copyStartView
   );
 
+  /*
+    Once location-config.js has a startView, the camera button is
+    hidden. Open the site with ?setview at the end of the address
+    to show it again.
+  */
+  var startViewButton =
+    getElement(
+      "copyStartView"
+    );
+
+  if (
+    startViewButton &&
+    readStartView() &&
+    !/[?&]setview\b/.test(window.location.search)
+  ) {
+    startViewButton.classList.add(
+      "hidden"
+    );
+  }
+
+  bindNavigationModeButtons();
+
   addEvent(
     "orbitMode",
     "click",
@@ -9462,3 +9524,912 @@ function formatCoordinate(
 
 
 bindDescriptionDialog();
+
+
+/* -------------------------------------------------------------------------- */
+/* SMOOTH NAVIGATION                                                          */
+/* -------------------------------------------------------------------------- */
+
+/*
+  Replaces Potree's mouse controls with three predictable modes:
+
+  Orbit  rotate around a fixed point (the model center after zooming,
+         or any point you double-click). The point only changes when
+         you zoom to a model or double-click, so it never wanders.
+  Fly    first-person, like a game: drag to look, WASD to move in the
+         direction you look, E/C up and down, wheel to glide forward.
+  Walk   like Fly, but moving stays level (no climbing or falling).
+         Height changes only with E/C. No jumping.
+
+  Keyboard movement keeps its smooth start and stop in all modes.
+*/
+
+var navigation = {
+  mode: "fly",
+  controls: null,
+  pivot: null,
+  radius: null,
+  targetRadius: null,
+  targetYaw: 0,
+  targetPitch: 0,
+  appliedYaw: null,
+  appliedPitch: null,
+  holdPosition: false,
+  glide: 0,
+  drag: null,
+  lastUpdate: 0
+};
+
+var NAVIGATION_HELP = {
+  orbit:
+    "Rotate: left drag · Pan: right drag · Zoom: wheel · Set center: double-click · Move: WASD/arrows · Up/down: E/C · Speed: , .",
+  fly:
+    "Look: left drag · Pan: right drag · Glide: wheel · Move: WASD/arrows · Up/down: E/C · Speed: , . · Look at point: double-click",
+  walk:
+    "Look: left drag · Walk: WASD/arrows (stays level) · Up/down: E/C · Glide: wheel · Speed: , ."
+};
+
+function smoothFactor(
+  deltaSeconds,
+  timeConstant
+) {
+  return timeConstant > 0
+    ? 1 - Math.exp(-deltaSeconds / timeConstant)
+    : 1;
+}
+
+function clampPitch(
+  pitch
+) {
+  var limit =
+    Math.PI / 2 - 0.02;
+
+  return Math.max(
+    -limit,
+    Math.min(limit, pitch)
+  );
+}
+
+/*
+  Potree direction: (0, 1, 0) turned by pitch around X, then by yaw around Z.
+*/
+function yawPitchFromDirection(
+  direction
+) {
+  var d =
+    normalize3({
+      x: direction.x,
+      y: direction.y,
+      z: direction.z
+    });
+
+  return {
+    yaw: Math.atan2(-d.x, d.y),
+    pitch: Math.asin(Math.max(-1, Math.min(1, d.z)))
+  };
+}
+
+function directionFromYawPitch(
+  yaw,
+  pitch
+) {
+  return {
+    x: -Math.sin(yaw) * Math.cos(pitch),
+    y: Math.cos(yaw) * Math.cos(pitch),
+    z: Math.sin(pitch)
+  };
+}
+
+/* Shortest way round, so a turn never spins the long way */
+function nearestAngle(
+  from,
+  to
+) {
+  var difference =
+    to - from;
+
+  difference =
+    Math.atan2(
+      Math.sin(difference),
+      Math.cos(difference)
+    );
+
+  return from + difference;
+}
+
+function installNavigation() {
+  if (
+    !viewer ||
+    navigation.controls
+  ) {
+    return;
+  }
+
+  /*
+    Potree calls update() on the active controls every frame and then
+    copies the view into the camera. This object only uses that hook;
+    all mouse input is handled below.
+  */
+  var controls = {
+    name: "SmoothNavigation",
+    enabled: true,
+    scene: null,
+    setScene: function (scene) { this.scene = scene; },
+    update: function (delta) { updateNavigation(delta); },
+    stop: function () {},
+    zoomToLocation: function () {},
+    dispatchEvent: function () {},
+    addEventListener: function () {},
+    removeEventListener: function () {},
+    hasEventListener: function () { return false; }
+  };
+
+  navigation.controls =
+    controls;
+
+  if (
+    typeof viewer.setControls ===
+    "function"
+  ) {
+    viewer.setControls(
+      controls
+    );
+  } else {
+    viewer.controls =
+      controls;
+  }
+
+  if (
+    viewer.renderer &&
+    viewer.renderer.domElement
+  ) {
+    bindNavigationMouse(
+      viewer.renderer.domElement
+    );
+  }
+
+  var savedMode =
+    null;
+
+  try {
+    savedMode =
+      window.localStorage.getItem(
+        "viewer:navigationMode"
+      );
+  } catch (
+    error
+  ) {
+    savedMode = null;
+  }
+
+  setNavigationMode(
+    savedMode ||
+    LOCATION_CONFIG.navigationMode ||
+    CONFIG.navigationMode,
+    true
+  );
+}
+
+function getCanvasDistance() {
+  var view =
+    viewer.scene.view;
+
+  if (
+    navigation.mode === "orbit" &&
+    navigation.radius
+  ) {
+    return navigation.radius;
+  }
+
+  var radius =
+    Number(view.radius);
+
+  return isFinite(radius) && radius > 0
+    ? radius
+    : 10;
+}
+
+/*
+  Called by placeCamera (zoom buttons, start view) and setOrbitCenter.
+*/
+function setNavigationPivot(
+  center
+) {
+  if (
+    !viewer ||
+    !viewer.scene ||
+    !center ||
+    typeof center.clone !==
+    "function"
+  ) {
+    return;
+  }
+
+  var view =
+    viewer.scene.view;
+
+  navigation.pivot =
+    center.clone();
+
+  navigation.radius =
+    navigation.targetRadius =
+      Math.max(
+        view.position.distanceTo(center),
+        0.01
+      );
+
+  navigation.targetYaw =
+    view.yaw;
+
+  navigation.targetPitch =
+    view.pitch;
+
+  navigation.appliedYaw =
+    view.yaw;
+
+  navigation.appliedPitch =
+    view.pitch;
+
+  navigation.holdPosition =
+    false;
+
+  navigation.glide =
+    0;
+}
+
+/* Keyboard movement in orbit mode carries the center along */
+function navigationCameraMoved(
+  displacement
+) {
+  if (
+    navigation.mode === "orbit" &&
+    navigation.pivot
+  ) {
+    navigation.pivot.add(
+      displacement
+    );
+  }
+}
+
+function setNavigationMode(
+  mode,
+  silent
+) {
+  if (
+    ["orbit", "fly", "walk"].indexOf(mode) === -1
+  ) {
+    mode = "fly";
+  }
+
+  navigation.mode =
+    mode;
+
+  navigation.glide =
+    0;
+
+  if (
+    mode === "orbit" &&
+    viewer &&
+    viewer.scene
+  ) {
+    /*
+      Orbit around what is in the middle of the screen, or around a
+      point straight ahead at the usual distance.
+    */
+    var view =
+      viewer.scene.view;
+
+    var canvas =
+      viewer.renderer &&
+      viewer.renderer.domElement;
+
+    var hit =
+      canvas
+        ? pickPointAt(
+          canvas.clientWidth / 2,
+          canvas.clientHeight / 2
+        )
+        : null;
+
+    if (
+      !hit
+    ) {
+      hit =
+        view.position.clone().add(
+          view.direction.multiplyScalar(
+            getCanvasDistance()
+          )
+        );
+    }
+
+    setNavigationPivot(
+      hit
+    );
+  }
+
+  document
+    .querySelectorAll("[data-nav-mode]")
+    .forEach(function (button) {
+      button.setAttribute(
+        "aria-pressed",
+        String(button.dataset.navMode === mode)
+      );
+    });
+
+  var help =
+    document.querySelector(
+      ".viewer-help"
+    );
+
+  if (
+    help
+  ) {
+    help.textContent =
+      NAVIGATION_HELP[mode];
+  }
+
+  try {
+    window.localStorage.setItem(
+      "viewer:navigationMode",
+      mode
+    );
+  } catch (
+    error
+  ) {
+    /* storage unavailable */
+  }
+
+  if (
+    !silent
+  ) {
+    setStatus(
+      mode.charAt(0).toUpperCase() +
+      mode.slice(1) +
+      " navigation",
+      "idle"
+    );
+  }
+}
+
+/* Point of the scan under a pixel of the canvas, or null */
+function pickPointAt(
+  x,
+  y
+) {
+  try {
+    if (
+      !window.Potree ||
+      !Potree.Utils ||
+      typeof Potree.Utils.getMousePointCloudIntersection !==
+      "function"
+    ) {
+      return null;
+    }
+
+    var clouds =
+      (viewer.scene.pointclouds || []).filter(
+        function (cloud) {
+          return cloud.visible !== false;
+        }
+      );
+
+    if (
+      clouds.length === 0
+    ) {
+      return null;
+    }
+
+    var hit =
+      Potree.Utils.getMousePointCloudIntersection(
+        { x: x, y: y },
+        viewer.scene.getActiveCamera(),
+        viewer,
+        clouds,
+        { pickClipped: false }
+      );
+
+    return hit && hit.location
+      ? hit.location.clone()
+      : null;
+  } catch (
+    error
+  ) {
+    return null;
+  }
+}
+
+/* Turn smoothly toward a point without moving the camera */
+function lookAtSmoothly(
+  point
+) {
+  var view =
+    viewer.scene.view;
+
+  var angles =
+    yawPitchFromDirection(
+      point.clone().sub(
+        view.position
+      )
+    );
+
+  navigation.targetYaw =
+    nearestAngle(
+      view.yaw,
+      angles.yaw
+    );
+
+  navigation.targetPitch =
+    clampPitch(
+      angles.pitch
+    );
+
+  if (
+    navigation.mode === "orbit"
+  ) {
+    navigation.pivot =
+      point.clone();
+
+    navigation.radius =
+      navigation.targetRadius =
+        Math.max(
+          view.position.distanceTo(point),
+          0.01
+        );
+
+    navigation.holdPosition =
+      true;
+  } else {
+    navigation.pivot =
+      point.clone();
+  }
+}
+
+function bindNavigationMouse(
+  canvas
+) {
+  canvas.addEventListener(
+    "contextmenu",
+    function (event) {
+      event.preventDefault();
+    }
+  );
+
+  canvas.addEventListener(
+    "pointerdown",
+    function (event) {
+      var pan =
+        event.button === 2 ||
+        event.button === 1 ||
+        (event.button === 0 && event.shiftKey);
+
+      if (
+        event.button !== 0 &&
+        !pan
+      ) {
+        return;
+      }
+
+      navigation.drag = {
+        id: event.pointerId,
+        type: pan ? "pan" : "look",
+        x: event.clientX,
+        y: event.clientY
+      };
+
+      navigation.holdPosition =
+        false;
+
+      try {
+        canvas.setPointerCapture(
+          event.pointerId
+        );
+      } catch (
+        error
+      ) {
+        /* ignore */
+      }
+
+      canvas.style.cursor =
+        pan ? "move" : "grabbing";
+    }
+  );
+
+  canvas.addEventListener(
+    "pointermove",
+    function (event) {
+      var drag =
+        navigation.drag;
+
+      if (
+        !drag ||
+        drag.id !== event.pointerId
+      ) {
+        return;
+      }
+
+      var dx =
+        event.clientX - drag.x;
+
+      var dy =
+        event.clientY - drag.y;
+
+      drag.x =
+        event.clientX;
+
+      drag.y =
+        event.clientY;
+
+      if (
+        drag.type === "look"
+      ) {
+        var sensitivity =
+          Number(CONFIG.lookSensitivity) || 0.004;
+
+        navigation.targetYaw -=
+          dx * sensitivity;
+
+        navigation.targetPitch =
+          clampPitch(
+            navigation.targetPitch -
+            dy * sensitivity
+          );
+      } else {
+        panView(
+          dx,
+          dy,
+          canvas
+        );
+      }
+    }
+  );
+
+  var endDrag =
+    function (event) {
+      if (
+        navigation.drag &&
+        navigation.drag.id === event.pointerId
+      ) {
+        navigation.drag =
+          null;
+
+        canvas.style.cursor =
+          "";
+      }
+    };
+
+  canvas.addEventListener(
+    "pointerup",
+    endDrag
+  );
+
+  canvas.addEventListener(
+    "pointercancel",
+    endDrag
+  );
+
+  canvas.addEventListener(
+    "wheel",
+    function (event) {
+      event.preventDefault();
+
+      /* Lines and pages become pixels so every mouse feels the same */
+      var amount =
+        event.deltaY *
+        (event.deltaMode === 1 ? 33 : event.deltaMode === 2 ? 400 : 1);
+
+      amount =
+        Math.max(-300, Math.min(300, amount));
+
+      if (
+        navigation.mode === "orbit"
+      ) {
+        navigation.holdPosition =
+          false;
+
+        navigation.targetRadius =
+          Math.max(
+            (navigation.targetRadius || getCanvasDistance()) *
+            Math.pow(1.0012, amount),
+            0.02
+          );
+      } else {
+        var speedScale =
+          (Number(state.navigationSpeed) || 0.35) /
+          (Number(CONFIG.navigationSpeed) || 0.35);
+
+        /* one wheel notch glides about 8% of the scene distance */
+        navigation.glide -=
+          (amount / 100) *
+          0.08 *
+          getCanvasDistance() *
+          speedScale /
+          CONFIG.glideTime;
+      }
+    },
+    { passive: false }
+  );
+
+  canvas.addEventListener(
+    "dblclick",
+    function (event) {
+      var rect =
+        canvas.getBoundingClientRect();
+
+      var point =
+        pickPointAt(
+          event.clientX - rect.left,
+          event.clientY - rect.top
+        );
+
+      if (
+        point
+      ) {
+        lookAtSmoothly(
+          point
+        );
+      }
+    }
+  );
+}
+
+/* Drag the scene with the mouse: right drag, middle drag or shift + left drag */
+function panView(
+  dx,
+  dy,
+  canvas
+) {
+  var view =
+    viewer.scene.view;
+
+  var fov =
+    typeof viewer.getFOV === "function"
+      ? Number(viewer.getFOV()) || 60
+      : 60;
+
+  var worldPerPixel =
+    2 *
+    Math.tan(fov * Math.PI / 360) *
+    getCanvasDistance() /
+    Math.max(canvas.clientHeight, 1);
+
+  var forward =
+    view.direction;
+
+  var right =
+    forward.clone().cross(
+      forward.clone().set(0, 0, 1)
+    );
+
+  if (
+    right.lengthSq() < 0.000001
+  ) {
+    right.set(1, 0, 0);
+  }
+
+  right.normalize();
+
+  var up =
+    navigation.mode === "walk"
+      ? forward.clone().set(0, 0, 1)
+      : right.clone().cross(forward).normalize();
+
+  var offset =
+    right.multiplyScalar(-dx * worldPerPixel)
+      .add(
+        up.multiplyScalar(dy * worldPerPixel)
+      );
+
+  view.position.add(
+    offset
+  );
+
+  if (
+    navigation.pivot
+  ) {
+    navigation.pivot.add(
+      offset
+    );
+  }
+}
+
+function updateNavigation(
+  delta
+) {
+  navigation.lastUpdate =
+    performance.now();
+
+  if (
+    !viewer ||
+    !viewer.scene ||
+    !viewer.scene.view
+  ) {
+    return;
+  }
+
+  var view =
+    viewer.scene.view;
+
+  var dt =
+    Number(delta);
+
+  if (
+    !isFinite(dt) ||
+    dt <= 0 ||
+    dt > 0.1
+  ) {
+    dt = 0.016;
+  }
+
+  /*
+    Someone else moved the camera (zoom buttons, start view):
+    take over its angles instead of turning back.
+  */
+  if (
+    navigation.appliedYaw === null ||
+    Math.abs(view.yaw - navigation.appliedYaw) > 0.000001 ||
+    Math.abs(view.pitch - navigation.appliedPitch) > 0.000001
+  ) {
+    navigation.targetYaw =
+      view.yaw;
+
+    navigation.targetPitch =
+      view.pitch;
+  }
+
+  var lookAlpha =
+    smoothFactor(
+      dt,
+      CONFIG.lookSmoothing
+    );
+
+  view.yaw +=
+    (navigation.targetYaw - view.yaw) *
+    lookAlpha;
+
+  view.pitch +=
+    (navigation.targetPitch - view.pitch) *
+    lookAlpha;
+
+  navigation.appliedYaw =
+    view.yaw;
+
+  navigation.appliedPitch =
+    view.pitch;
+
+  if (
+    navigation.mode === "orbit"
+  ) {
+    if (
+      !navigation.pivot
+    ) {
+      setNavigationPivot(
+        view.position.clone().add(
+          view.direction.multiplyScalar(
+            getCanvasDistance()
+          )
+        )
+      );
+    }
+
+    if (
+      navigation.holdPosition
+    ) {
+      /* turning toward a double-clicked point: stay in place */
+      navigation.radius =
+        navigation.targetRadius =
+          Math.max(
+            view.position.distanceTo(navigation.pivot),
+            0.01
+          );
+
+      if (
+        Math.abs(navigation.targetYaw - view.yaw) < 0.0005 &&
+        Math.abs(navigation.targetPitch - view.pitch) < 0.0005
+      ) {
+        navigation.holdPosition =
+          false;
+      }
+    } else {
+      navigation.radius +=
+        (navigation.targetRadius - navigation.radius) *
+        smoothFactor(dt, CONFIG.zoomSmoothing);
+
+      view.position.copy(
+        navigation.pivot.clone().sub(
+          view.direction.multiplyScalar(
+            navigation.radius
+          )
+        )
+      );
+    }
+
+    view.radius =
+      navigation.radius;
+
+    return;
+  }
+
+  /* Fly and walk: wheel glide with a soft stop */
+  if (
+    Math.abs(navigation.glide) > 0.000001
+  ) {
+    var direction =
+      view.direction;
+
+    if (
+      navigation.mode === "walk"
+    ) {
+      direction.z = 0;
+
+      if (
+        direction.lengthSq() < 0.000001
+      ) {
+        var level =
+          directionFromYawPitch(view.yaw, 0);
+
+        direction.set(level.x, level.y, 0);
+      }
+
+      direction.normalize();
+    }
+
+    view.position.add(
+      direction.multiplyScalar(
+        navigation.glide * dt
+      )
+    );
+
+    navigation.glide *=
+      Math.exp(-dt / CONFIG.glideTime);
+
+    if (
+      Math.abs(navigation.glide) < 0.0001
+    ) {
+      navigation.glide = 0;
+    }
+  }
+}
+
+function bindNavigationModeButtons() {
+  document
+    .querySelectorAll("[data-nav-mode]")
+    .forEach(function (button) {
+      button.addEventListener(
+        "click",
+        function () {
+          setNavigationMode(
+            button.dataset.navMode
+          );
+        }
+      );
+    });
+
+  /* 1 Orbit, 2 Fly, 3 Walk */
+  document.addEventListener(
+    "keydown",
+    function (event) {
+      if (
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        isTypingInField(event.target)
+      ) {
+        return;
+      }
+
+      var modes = {
+        "1": "orbit",
+        "2": "fly",
+        "3": "walk"
+      };
+
+      if (
+        modes[event.key]
+      ) {
+        setNavigationMode(
+          modes[event.key]
+        );
+      }
+    }
+  );
+}

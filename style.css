@@ -593,6 +593,38 @@ button:active {
   background: rgba(0, 0, 0, 0.82);
 }
 
+/* Navigation mode switch (Orbit / Fly / Walk) */
+.viewer-toolbar {
+  align-items: center;
+}
+
+.nav-modes {
+  display: flex;
+  gap: 2px;
+  margin-right: 4px;
+  padding-right: 6px;
+  border-right: 1px solid var(--border);
+}
+
+.nav-modes button {
+  height: 26px;
+  padding: 0 9px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.nav-modes button:hover {
+  color: var(--text);
+}
+
+.nav-modes button[aria-pressed="true"] {
+  background: #1c1c1c;
+  color: var(--text);
+}
+
 .toolbar-button {
   min-height: 30px;
   padding: 0 10px;
