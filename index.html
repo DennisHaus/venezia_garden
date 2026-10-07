@@ -330,7 +330,7 @@
               <circle cx="12" cy="12" r="3" />
             </svg>
 
-            <!-- shown in Orbit mode: a path circling a point -->
+            <!-- shown in Orbit mode: two arrows circling a centre point -->
             <svg
               class="nav-icon-orbit"
               width="24"
@@ -342,20 +342,43 @@
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <ellipse cx="12" cy="12" rx="10" ry="4.5" />
-              <path d="m17.5 6.2 2.3 1.6-1.4 2.4" />
-              <circle cx="12" cy="12" r="2" fill="currentColor" />
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+              <path d="M21 3v5h-5" />
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+              <path d="M8 16H3v5" />
+              <circle cx="12" cy="12" r="1.5" fill="currentColor" />
             </svg>
           </button>
 
           <button
             id="toggleProjection"
+            class="projection-toggle"
             type="button"
-            title="Switch to orthographic view"
+            title="Perspective view. Click for orthographic"
             aria-pressed="false"
+            data-projection="perspective"
             style="background: none; border: none; cursor: pointer;"
           >
+            <!-- shown in perspective: lines meeting at a vanishing point -->
             <svg
+              class="projection-icon-perspective"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M9 4h6l6 16H3L9 4z" />
+              <path d="M6.4 12h11.2" />
+              <path d="M12 4v16" />
+            </svg>
+
+            <!-- shown in orthographic: a cube with parallel edges -->
+            <svg
+              class="projection-icon-orthographic"
               width="24"
               height="24"
               viewBox="0 0 24 24"
@@ -499,7 +522,7 @@
                     id="pointDisplayMode"
                     class="control-toggle"
                     type="button"
-                    aria-pressed="true"
+                    aria-pressed="false"
                   >
                     Depth-sized
                   </button>
@@ -690,11 +713,12 @@
 
                 <input
                   id="sectionThickness"
-                  class="number-input"
-                  type="number"
+                  class="range-input"
+                  type="range"
                   min="0.001"
-                  step="0.01"
-                  value="1"
+                  max="1"
+                  step="0.001"
+                  value="0.1"
                   disabled
                 />
 

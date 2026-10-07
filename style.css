@@ -607,10 +607,19 @@ button:active {
   display: inline;
 }
 
-/* Projection toggle: highlighted while orthographic */
-#toggleProjection[aria-pressed="true"] {
-  background: #222222 !important;
-  color: #ffffff;
+/* Projection toggle: shows the icon of the active projection */
+.projection-toggle .projection-icon-orthographic,
+.projection-toggle[data-projection="orthographic"] .projection-icon-perspective {
+  display: none;
+}
+
+.projection-toggle[data-projection="orthographic"] .projection-icon-orthographic {
+  display: inline;
+}
+
+/* No browser scrolling or zooming while dragging in the viewer */
+#potree_render_area {
+  touch-action: none;
 }
 
 .toolbar-button {

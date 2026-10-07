@@ -4750,6 +4750,13 @@ function updateSectionControls() {
   thicknessElement.max =
     length;
 
+  thicknessElement.step =
+    Math.max(
+      length /
+      1000,
+      0.000001
+    );
+
   thicknessElement.value =
     thickness.toFixed(
       3
@@ -10260,14 +10267,24 @@ function lookAtSmoothly(
 function bindNavigationMouse(
   canvas
 ) {
-  canvas.addEventListener(
+  /*
+    Listen on the whole render area, not only the canvas, so
+    elements Potree places above the canvas can't swallow input.
+  */
+  var surface =
+    document.getElementById(
+      "potree_render_area"
+    ) ||
+    canvas;
+
+  surface.addEventListener(
     "contextmenu",
     function (event) {
       event.preventDefault();
     }
   );
 
-  canvas.addEventListener(
+  surface.addEventListener(
     "pointerdown",
     function (event) {
       var pan =
@@ -10305,7 +10322,7 @@ function bindNavigationMouse(
         false;
 
       try {
-        canvas.setPointerCapture(
+        surface.setPointerCapture(
           event.pointerId
         );
       } catch (
@@ -10314,12 +10331,12 @@ function bindNavigationMouse(
         /* ignore */
       }
 
-      canvas.style.cursor =
+      surface.style.cursor =
         pan ? "move" : "grabbing";
     }
   );
 
-  canvas.addEventListener(
+  surface.addEventListener(
     "pointermove",
     function (event) {
       var drag =
@@ -10378,22 +10395,22 @@ function bindNavigationMouse(
         navigation.drag =
           null;
 
-        canvas.style.cursor =
+        surface.style.cursor =
           "";
       }
     };
 
-  canvas.addEventListener(
+  surface.addEventListener(
     "pointerup",
     endDrag
   );
 
-  canvas.addEventListener(
+  surface.addEventListener(
     "pointercancel",
     endDrag
   );
 
-  canvas.addEventListener(
+  surface.addEventListener(
     "wheel",
     function (event) {
       event.preventDefault();
@@ -10448,7 +10465,7 @@ function bindNavigationMouse(
     { passive: false }
   );
 
-  canvas.addEventListener(
+  surface.addEventListener(
     "dblclick",
     function (event) {
       var rect =
@@ -10581,9 +10598,24 @@ function updateNavigation(
       CONFIG.lookSmoothing
     );
 
+  /*
+    Potree keeps yaw within one full turn, so steer by the shortest
+    angle and keep the target in the same turn as the view.
+  */
+  var yawDifference =
+    Math.atan2(
+      Math.sin(navigation.targetYaw - view.yaw),
+      Math.cos(navigation.targetYaw - view.yaw)
+    );
+
   view.yaw +=
-    (navigation.targetYaw - view.yaw) *
+    yawDifference *
     lookAlpha;
+
+  navigation.targetYaw =
+    view.yaw +
+    yawDifference *
+    (1 - lookAlpha);
 
   view.pitch +=
     (navigation.targetPitch - view.pitch) *
@@ -10917,10 +10949,15 @@ function toggleProjection() {
       String(ortho)
     );
 
+    button.dataset.projection =
+      ortho
+        ? "orthographic"
+        : "perspective";
+
     button.title =
       ortho
-        ? "Switch to perspective view"
-        : "Switch to orthographic view";
+        ? "Orthographic view. Click for perspective"
+        : "Perspective view. Click for orthographic";
   }
 }
 
