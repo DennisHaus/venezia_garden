@@ -38,7 +38,10 @@ window.LOCATION_CONFIG = {
     the copied block here (replacing this line).
     Leave it as null to start with the whole first scan in view.
   */
-  startView: null,
+  startView: {
+  position: [56.107, 118.023, 62.507],
+  target: [122.862, 133.846, -8.388]
+},
 
   /*
     Mouse navigation when someone opens the viewer for the first time:
