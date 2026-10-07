@@ -1,5 +1,5 @@
 window.LOCATION_CONFIG = {
-  pageTitle: "Spatial Library Brinzauls",
+  pageTitle: "Garden Venice",
 
   metaDescription:
     "Cloud optimized point cloud viewer for Brienz/Brinzauls scans.",
