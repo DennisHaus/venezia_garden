@@ -2,16 +2,16 @@
   "version": 1,
   "scans": [
     {
-      "id": "scans-2026-venezia-garden-13mio",
-      "name": "2026 Venezia Garden 13mio",
-      "filename": "2026_Venezia_Garden_13mio.copc.laz",
-      "path": "./scans/2026_Venezia_Garden_13mio.copc.laz",
-      "url": "./scans/2026_Venezia_Garden_13mio.copc.laz",
+      "id": "scans-giardino-minellispada-allscans-shift205-14mio",
+      "name": "Giardino Minellispada Allscans Shift205 14mio",
+      "filename": "Giardino_MinelliSpada_AllScans_shift205_14mio.copc.laz",
+      "path": "./scans/Giardino_MinelliSpada_AllScans_shift205_14mio.copc.laz",
+      "url": "./scans/Giardino_MinelliSpada_AllScans_shift205_14mio.copc.laz",
       "format": "copc",
-      "sizeBytes": 80107357,
+      "sizeBytes": 85573932,
       "pointCount": null,
       "crs": null,
-      "uploadedAt": "2026-10-06"
+      "uploadedAt": "2026-10-07"
     }
   ]
 }
