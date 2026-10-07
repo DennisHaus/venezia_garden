@@ -307,6 +307,48 @@
           </button>
 
           <button
+            id="toggleNavigation"
+            class="nav-toggle"
+            type="button"
+            data-mode="fly"
+            title="Fly: dragging looks around like in a game. Click for Orbit (O)"
+            style="background: none; border: none; cursor: pointer;"
+          >
+            <!-- shown in Fly mode: an eye -->
+            <svg
+              class="nav-icon-fly"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+
+            <!-- shown in Orbit mode: a path circling a point -->
+            <svg
+              class="nav-icon-orbit"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <ellipse cx="12" cy="12" rx="10" ry="4.5" />
+              <path d="m17.5 6.2 2.3 1.6-1.4 2.4" />
+              <circle cx="12" cy="12" r="2" fill="currentColor" />
+            </svg>
+          </button>
+
+          <button
             id="toggleProjection"
             type="button"
             title="Switch to orthographic view"
@@ -457,7 +499,7 @@
                     id="pointDisplayMode"
                     class="control-toggle"
                     type="button"
-                    aria-pressed="false"
+                    aria-pressed="true"
                   >
                     Depth-sized
                   </button>

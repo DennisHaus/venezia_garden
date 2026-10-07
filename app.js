@@ -9255,6 +9255,28 @@ window.setTimeout(
     toggleProjection
   );
 
+  addEvent(
+    "toggleNavigation",
+    "click",
+    toggleNavigationMode
+  );
+
+  document.addEventListener(
+    "keydown",
+    function (event) {
+      if (
+        (event.key === "o" || event.key === "O" || event.code === "KeyO") &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !event.repeat &&
+        !isTypingInField(event.target)
+      ) {
+        toggleNavigationMode();
+      }
+    }
+  );
+
   /*
     Once location-config.js has a startView, the camera button is
     hidden. Open the site with ?setview at the end of the address
@@ -9767,9 +9789,9 @@ var navigation = {
 
 var NAVIGATION_HELP = {
   orbit:
-    "Rotate: left drag · Pan: right drag · Zoom: wheel · Set center: double-click · Move: WASD/arrows · Up/down: E/C · Speed: , .",
+    "Orbit · Rotate around model: left drag · Pan: right drag · Zoom: wheel · New center: double-click · Move: WASD/arrows · Up/down: E/C · Speed: , . · Switch: O",
   fly:
-    "Look: left drag · Orbit: Alt + left drag · Pan: right drag · Glide: wheel · Move: WASD/arrows · Up/down: E/C · Speed: , . · Look at point: double-click",
+    "Fly · Look around: left drag · Pan: right drag · Glide: wheel · Move: WASD/arrows · Up/down: E/C · Speed: , . · Look at point: double-click · Switch: O",
   walk:
     "Look: left drag · Walk: WASD/arrows (stays level) · Up/down: E/C · Glide: wheel · Speed: , ."
 };
@@ -9923,9 +9945,33 @@ function installNavigation() {
     );
   }
 
+  var savedMode =
+    null;
+
+  try {
+    savedMode =
+      window.localStorage.getItem(
+        "viewer:navigationMode"
+      );
+  } catch (
+    error
+  ) {
+    savedMode = null;
+  }
+
   setNavigationMode(
-    "fly",
+    savedMode ||
+    LOCATION_CONFIG.navigationMode ||
+    CONFIG.navigationMode,
     true
+  );
+}
+
+function toggleNavigationMode() {
+  setNavigationMode(
+    navigation.mode === "orbit"
+      ? "fly"
+      : "orbit"
   );
 }
 
@@ -10066,14 +10112,33 @@ function setNavigationMode(
     );
   }
 
-  document
-    .querySelectorAll("[data-nav-mode]")
-    .forEach(function (button) {
-      button.setAttribute(
-        "aria-pressed",
-        String(button.dataset.navMode === mode)
-      );
-    });
+  var toggle =
+    getElement(
+      "toggleNavigation"
+    );
+
+  if (
+    toggle
+  ) {
+    toggle.dataset.mode =
+      mode;
+
+    toggle.title =
+      mode === "orbit"
+        ? "Orbit: dragging rotates around the model. Click for Fly (O)"
+        : "Fly: dragging looks around like in a game. Click for Orbit (O)";
+  }
+
+  try {
+    window.localStorage.setItem(
+      "viewer:navigationMode",
+      mode
+    );
+  } catch (
+    error
+  ) {
+    /* storage unavailable */
+  }
 
   var help =
     document.querySelector(
@@ -10530,6 +10595,16 @@ function updateNavigation(
   navigation.appliedPitch =
     view.pitch;
 
+  /* Orthographic: the wheel changes the scale of the view */
+  if (
+    isOrthographic() &&
+    navigation.orthoTarget
+  ) {
+    view.radius +=
+      (navigation.orthoTarget - view.radius) *
+      smoothFactor(dt, CONFIG.zoomSmoothing);
+  }
+
   if (
     navigation.mode === "orbit"
   ) {
@@ -10577,8 +10652,12 @@ function updateNavigation(
       );
     }
 
-    view.radius =
-      navigation.radius;
+    if (
+      !isOrthographic()
+    ) {
+      view.radius =
+        navigation.radius;
+    }
 
     return;
   }
@@ -10611,16 +10690,6 @@ function updateNavigation(
       navigation.orbitActive =
         false;
     }
-  }
-
-  /* Orthographic: the wheel changes the scale of the view */
-  if (
-    isOrthographic() &&
-    navigation.orthoTarget
-  ) {
-    view.radius +=
-      (navigation.orthoTarget - view.radius) *
-      smoothFactor(dt, CONFIG.zoomSmoothing);
   }
 
   /* Fly and walk: wheel glide with a soft stop */

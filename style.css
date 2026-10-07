@@ -597,6 +597,16 @@ button:active {
   align-items: center;
 }
 
+/* Orbit / Fly toggle: shows the icon of the active mode */
+.nav-toggle .nav-icon-orbit,
+.nav-toggle[data-mode="orbit"] .nav-icon-fly {
+  display: none;
+}
+
+.nav-toggle[data-mode="orbit"] .nav-icon-orbit {
+  display: inline;
+}
+
 /* Projection toggle: highlighted while orthographic */
 #toggleProjection[aria-pressed="true"] {
   background: #222222 !important;

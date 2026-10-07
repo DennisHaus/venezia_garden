@@ -52,6 +52,14 @@ window.LOCATION_CONFIG = {
   },
 
 
+  /*
+    How dragging works when someone opens the viewer for the first
+    time: "fly" (look around like in a game) or "orbit" (rotate
+    around the model). Visitors switch with the eye/orbit button
+    or the O key; their choice is remembered.
+  */
+  navigationMode: "fly",
+
 
   uploadUrl:
     "https://github.com/DennisHaus/pointcloud_viewer/upload/main/scans",
