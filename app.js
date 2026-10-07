@@ -40,14 +40,18 @@ var CONFIG = {
   useRawBaseForPaths:
     LOCATION_CONFIG.useRawBaseForPaths === true,
 
+  /*
+    Share of the viewer the model fills when zooming to it
+    (0.9 = 10% margin around the model).
+  */
   fitFactor:
-    0.95,
+    0.9,
 
+  /*
+    1 = exact fit. Below 1 moves closer, above 1 farther away.
+  */
   fitDistanceMultiplier:
-    0.8,
-
-  fitVerticalOffset:
-    -0.4,
+    1,
 
   rawBaseUrl:
     LOCATION_CONFIG.rawBaseUrl ||
@@ -3351,11 +3355,36 @@ function loadScan(
         window.setTimeout(
           function () {
             if (
-              state.activeCloud ===
+              state.activeCloud !==
               pointcloud
             ) {
-              fitActiveScan();
+              return;
             }
+
+            /*
+              The first scan opens at the start view from
+              location-config.js, if one is set.
+            */
+            var useStartView =
+              !state.startViewApplied;
+
+            state.startViewApplied =
+              true;
+
+            if (
+              useStartView &&
+              applyStartView()
+            ) {
+              setStatus(
+                scan.name +
+                " loaded",
+                "idle"
+              );
+
+              return;
+            }
+
+            fitActiveScan();
           },
           500
         );
@@ -6282,6 +6311,21 @@ function getPointCloudWorldBounds(
   }
 
   /*
+    The tight box hugs the actual points. The regular box is the
+    octree cube, which is larger and puts the center off the model.
+  */
+  var tightBounds =
+    getTightWorldBounds(
+      pointcloud
+    );
+
+  if (
+    tightBounds
+  ) {
+    return tightBounds;
+  }
+
+  /*
     First try Potree's own world-bounds method.
   */
   if (
@@ -6413,6 +6457,61 @@ function getPointCloudWorldBounds(
   return readPointCloudBox(
     box
   );
+}
+
+
+function getTightWorldBounds(
+  pointcloud
+) {
+  var geometry =
+    pointcloud.pcoGeometry;
+
+  var box =
+    geometry &&
+    geometry.tightBoundingBox;
+
+  if (
+    !box ||
+    typeof box.clone !==
+    "function" ||
+    (
+      typeof box.isEmpty ===
+      "function" &&
+      box.isEmpty()
+    )
+  ) {
+    return null;
+  }
+
+  try {
+    if (
+      typeof pointcloud.updateMatrixWorld ===
+      "function"
+    ) {
+      pointcloud.updateMatrixWorld(
+        true
+      );
+    }
+
+    var worldBox =
+      box.clone();
+
+    if (
+      pointcloud.matrixWorld
+    ) {
+      worldBox.applyMatrix4(
+        pointcloud.matrixWorld
+      );
+    }
+
+    return readPointCloudBox(
+      worldBox
+    );
+  } catch (
+    error
+  ) {
+    return null;
+  }
 }
 
 
@@ -6690,6 +6789,12 @@ function getViewDirection(
   return direction;
 }
 
+/*
+  Frames the bounds exactly: the box center lands in the middle of
+  the viewer and the camera keeps its current viewing direction.
+  The distance is computed from all 8 box corners, so tall, flat or
+  long scans are framed tightly instead of using a loose sphere.
+*/
 function fitBounds(
   bounds,
   fitFactor,
@@ -6717,459 +6822,244 @@ function fitBounds(
     return false;
   }
 
-  /*
-    Use Potree's own Vector3 class.
-  */
-  var min =
-    view.position.clone();
-
-  min.set(
-    Number(
-      bounds.min.x
-    ),
-    Number(
-      bounds.min.y
-    ),
-    Number(
-      bounds.min.z
-    )
-  );
-
-  var max =
-    view.position.clone();
-
-  max.set(
-    Number(
-      bounds.max.x
-    ),
-    Number(
-      bounds.max.y
-    ),
-    Number(
-      bounds.max.z
-    )
-  );
+  var minX = Number(bounds.min.x);
+  var minY = Number(bounds.min.y);
+  var minZ = Number(bounds.min.z);
+  var maxX = Number(bounds.max.x);
+  var maxY = Number(bounds.max.y);
+  var maxZ = Number(bounds.max.z);
 
   if (
-    !isFinite(min.x) ||
-    !isFinite(min.y) ||
-    !isFinite(min.z) ||
-    !isFinite(max.x) ||
-    !isFinite(max.y) ||
-    !isFinite(max.z)
+    ![minX, minY, minZ, maxX, maxY, maxZ].every(isFinite)
   ) {
     return false;
   }
 
+  var center = {
+    x: (minX + maxX) / 2,
+    y: (minY + maxY) / 2,
+    z: (minZ + maxZ) / 2
+  };
+
   /*
-    Actual center of the scan bounds.
+    Camera axes. Z is up.
   */
-  var center =
-    min.clone()
-      .add(
-        max
+  var currentDirection =
+    getViewDirection(
+      view,
+      null
+    );
+
+  var forward =
+    normalize3(
+      currentDirection
+        ? {
+          x: currentDirection.x,
+          y: currentDirection.y,
+          z: currentDirection.z
+        }
+        : {
+          x: 0,
+          y: -1,
+          z: -0.5
+        }
+    );
+
+  var right =
+    cross3(
+      forward,
+      { x: 0, y: 0, z: 1 }
+    );
+
+  if (
+    length3(right) < 0.000001
+  ) {
+    right = { x: 1, y: 0, z: 0 };
+  }
+
+  right =
+    normalize3(right);
+
+  var up =
+    normalize3(
+      cross3(
+        right,
+        forward
       )
-      .multiplyScalar(
-        0.5
-      );
-
-  /*
-    Size of the bounds.
-  */
-  var size =
-    max.clone()
-      .sub(
-        min
-      );
-
-  var width =
-    Math.abs(
-      size.x
     );
 
-  var height =
-    Math.abs(
-      size.y
-    );
-
-  var depth =
-    Math.abs(
-      size.z
-    );
-
-  if (
-    !isFinite(width) ||
-    width <= 0
-  ) {
-    width =
-      1;
-  }
-
-  if (
-    !isFinite(height) ||
-    height <= 0
-  ) {
-    height =
-      1;
-  }
-
-  if (
-    !isFinite(depth) ||
-    depth <= 0
-  ) {
-    depth =
-      1;
-  }
-
   /*
-    Keep the current viewing direction.
-  */
-  var direction =
-    null;
-
-  if (
-    view.direction &&
-    typeof view.direction.clone ===
-    "function"
-  ) {
-    direction =
-      view.direction.clone();
-  }
-
-  if (
-    !direction &&
-    typeof view.getDirection ===
-    "function"
-  ) {
-    direction =
-      view.getDirection();
-
-    if (
-      direction &&
-      typeof direction.clone ===
-      "function"
-    ) {
-      direction =
-        direction.clone();
-    }
-  }
-
-  /*
-    Fallback direction: from camera to scan center.
-  */
-  if (
-    !direction &&
-    typeof center.clone ===
-    "function"
-  ) {
-    direction =
-      center.clone()
-        .sub(
-          view.position
-        );
-  }
-
-  /*
-    Final fallback direction.
-  */
-  if (
-    !direction ||
-    typeof direction.normalize !==
-    "function"
-  ) {
-    direction =
-      view.position.clone();
-
-    direction.set(
-      0,
-      -1,
-      -0.5
-    );
-  }
-
-  if (
-    typeof direction.lengthSq ===
-    "function" &&
-    direction.lengthSq() <
-    0.000001
-  ) {
-    direction.set(
-      0,
-      -1,
-      -0.5
-    );
-  }
-
-  direction.normalize();
-
-  /*
-    Camera field of view.
+    Field of view and aspect ratio of the canvas.
   */
   var fov =
-    50;
-
-  if (
-    typeof viewer.getFOV ===
-    "function"
-  ) {
-    fov =
-      Number(
-        viewer.getFOV()
-      );
-  }
+    typeof viewer.getFOV === "function"
+      ? Number(viewer.getFOV())
+      : 60;
 
   if (
     !isFinite(fov) ||
     fov <= 0
   ) {
-    fov =
-      50;
+    fov = 60;
   }
 
-  var verticalFov =
-    fov *
-    Math.PI /
-    180;
-
-  /*
-    Renderer aspect ratio.
-  */
-  var aspect =
-    1;
-
-  if (
+  var canvas =
     viewer.renderer &&
-    viewer.renderer.domElement
-  ) {
-    var canvas =
-      viewer.renderer.domElement;
+    viewer.renderer.domElement;
 
-    var canvasWidth =
-      canvas.clientWidth ||
-      canvas.width ||
-      1;
-
-    var canvasHeight =
-      canvas.clientHeight ||
-      canvas.height ||
-      1;
-
-    aspect =
-      canvasWidth /
-      Math.max(
-        canvasHeight,
-        1
-      );
-  }
+  var aspect =
+    canvas
+      ? (canvas.clientWidth || canvas.width || 1) /
+        Math.max(canvas.clientHeight || canvas.height || 1, 1)
+      : 1;
 
   if (
     !isFinite(aspect) ||
     aspect <= 0
   ) {
-    aspect =
-      1;
+    aspect = 1;
   }
 
-  var horizontalFov =
-    2 *
-    Math.atan(
-      Math.tan(
-        verticalFov /
-        2
-      ) *
-      aspect
+  var tanVertical =
+    Math.tan(
+      fov * Math.PI / 360
     );
 
-  var limitingFov =
-    Math.min(
-      verticalFov,
-      horizontalFov
-    );
+  var tanHorizontal =
+    tanVertical * aspect;
 
   /*
-    Bounding-sphere radius.
+    fitFactor = share of the screen the model may fill (0.9 = 10% margin).
   */
-  var radius =
-    Math.sqrt(
-      width *
-      width +
-      height *
-      height +
-      depth *
-      depth
-    ) /
-    2;
+  var margin =
+    Number(fitFactor);
 
   if (
-    !isFinite(radius) ||
-    radius <= 0
+    !isFinite(margin) ||
+    margin <= 0 ||
+    margin > 1
   ) {
-    radius =
-      1;
+    margin = 0.9;
   }
 
-  /*
-    Fit factor.
+  var distance = 0;
 
-    Larger values move the camera closer.
-    Values such as 0.9, 0.97 and 0.998
-    are all accepted.
-  */
-  var safeFitFactor =
-    Number(
-      fitFactor
-    );
+  [minX, maxX].forEach(function (x) {
+    [minY, maxY].forEach(function (y) {
+      [minZ, maxZ].forEach(function (z) {
+        var p = {
+          x: x - center.x,
+          y: y - center.y,
+          z: z - center.z
+        };
+
+        var screenX = Math.abs(dot3(p, right));
+        var screenY = Math.abs(dot3(p, up));
+        var depth = dot3(p, forward);
+
+        distance = Math.max(
+          distance,
+          screenX / (tanHorizontal * margin) - depth,
+          screenY / (tanVertical * margin) - depth
+        );
+      });
+    });
+  });
+
+  var multiplier =
+    Number(CONFIG.fitDistanceMultiplier);
 
   if (
-    !isFinite(safeFitFactor) ||
-    safeFitFactor <= 0
+    isFinite(multiplier) &&
+    multiplier > 0
   ) {
-    safeFitFactor =
-      0.9;
+    distance *= multiplier;
   }
 
-  /*
-    Base camera distance.
-  */
-  var baseDistance =
-    radius /
-    Math.sin(
-      limitingFov /
-      2
-    );
-
-  if (
-    !isFinite(baseDistance) ||
-    baseDistance <= 0
-  ) {
-    baseDistance =
-      1;
-  }
-
-  /*
-    Additional distance multiplier.
-
-    1.00 = normal
-    0.85 = closer
-    0.70 = much closer
-    1.20 = farther away
-  */
-  var distanceMultiplier =
-    Number(
-      CONFIG.fitDistanceMultiplier
-    );
-
-  if (
-    !isFinite(distanceMultiplier) ||
-    distanceMultiplier <= 0
-  ) {
-    distanceMultiplier =
-      1;
-  }
-
-  var distance =
-    baseDistance /
-    safeFitFactor;
-
-  distance *=
-    distanceMultiplier;
-
-  /*
-    Prevent an invalid or extremely small distance.
-  */
   var largestSize =
     Math.max(
-      width,
-      height,
-      depth
-    );
-
-  var minimumDistance =
-    Math.max(
-      largestSize *
-      0.001,
-      0.001
+      maxX - minX,
+      maxY - minY,
+      maxZ - minZ
     );
 
   distance =
     Math.max(
       distance,
-      minimumDistance
+      largestSize * 0.01,
+      0.01
     );
 
-  /*
-    Target center used for looking at the model.
+  var target =
+    view.position.clone();
 
-    Z is treated as the vertical axis.
-    Negative values move the target slightly
-    downward, which makes the model appear
-    higher in the viewport.
-  */
-  var targetCenter =
-    center.clone();
-
-  var verticalOffset =
-    Number(
-      CONFIG.fitVerticalOffset
-    );
-
-  if (
-    !isFinite(verticalOffset)
-  ) {
-    verticalOffset =
-      0;
-  }
-
-  targetCenter.z +=
-    depth *
-    verticalOffset;
-
-  /*
-    Position the camera.
-  */
-  var cameraPosition =
-    targetCenter.clone()
-      .sub(
-        direction.clone()
-          .multiplyScalar(
-            distance
-          )
-      );
-
-  view.position.copy(
-    cameraPosition
+  target.set(
+    center.x,
+    center.y,
+    center.z
   );
 
-  /*
-    Look at the adjusted target center.
-  */
+  var position =
+    view.position.clone();
+
+  position.set(
+    center.x - forward.x * distance,
+    center.y - forward.y * distance,
+    center.z - forward.z * distance
+  );
+
+  placeCamera(
+    position,
+    target
+  );
+
+  if (
+    statusMessage
+  ) {
+    setStatus(
+      statusMessage,
+      "idle"
+    );
+  }
+
+  return true;
+}
+
+
+/*
+  Puts the camera at position, looking at target, and makes target
+  the orbit center so orbiting doesn't make the model jump.
+*/
+function placeCamera(
+  position,
+  target
+) {
+  var view =
+    viewer.scene.view;
+
+  view.position.copy(
+    position
+  );
+
   if (
     typeof view.lookAt ===
     "function"
   ) {
     view.lookAt(
-      targetCenter
+      target
     );
   }
 
   view.radius =
-    distance;
-
-  /*
-    Keep the actual scan center as
-    the orbit rotation center.
-  */
-  if (
-    typeof setOrbitCenter ===
-    "function"
-  ) {
-    setOrbitCenter(
-      center
+    position.distanceTo(
+      target
     );
-  }
+
+  setOrbitCenter(
+    target
+  );
 
   if (
-    viewer.scene &&
     typeof viewer.scene.getActiveCamera ===
     "function"
   ) {
@@ -7184,18 +7074,218 @@ function fitBounds(
       camera.updateProjectionMatrix();
     }
   }
+}
+
+
+function dot3(a, b) {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+function cross3(a, b) {
+  return {
+    x: a.y * b.z - a.z * b.y,
+    y: a.z * b.x - a.x * b.z,
+    z: a.x * b.y - a.y * b.x
+  };
+}
+
+function length3(a) {
+  return Math.sqrt(dot3(a, a));
+}
+
+function normalize3(a) {
+  var length =
+    length3(a) || 1;
+
+  return {
+    x: a.x / length,
+    y: a.y / length,
+    z: a.z / length
+  };
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* START VIEW                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/*
+  Reads startView from location-config.js:
+
+  startView: {
+    position: [x, y, z],
+    target: [x, y, z]
+  }
+*/
+function readVector3(
+  value
+) {
+  if (
+    !value
+  ) {
+    return null;
+  }
+
+  var parts =
+    Array.isArray(value)
+      ? value
+      : typeof value === "string"
+        ? value.split(/[;,\s]+/).filter(Boolean)
+        : [value.x, value.y, value.z];
+
+  var numbers =
+    parts.slice(0, 3).map(Number);
+
+  return numbers.length === 3 &&
+    numbers.every(isFinite)
+    ? numbers
+    : null;
+}
+
+function readStartView() {
+  var startView =
+    LOCATION_CONFIG.startView;
 
   if (
-    statusMessage
+    !startView
   ) {
-    setStatus(
-      statusMessage,
-      "idle"
-    );
+    return null;
   }
+
+  var position =
+    readVector3(startView.position);
+
+  var target =
+    readVector3(startView.target);
+
+  return position && target
+    ? { position: position, target: target }
+    : null;
+}
+
+function applyStartView() {
+  var startView =
+    readStartView();
+
+  if (
+    !startView ||
+    !viewer ||
+    !viewer.scene ||
+    !viewer.scene.view
+  ) {
+    return false;
+  }
+
+  var view =
+    viewer.scene.view;
+
+  var position =
+    view.position.clone();
+
+  position.set(
+    startView.position[0],
+    startView.position[1],
+    startView.position[2]
+  );
+
+  var target =
+    view.position.clone();
+
+  target.set(
+    startView.target[0],
+    startView.target[1],
+    startView.target[2]
+  );
+
+  placeCamera(
+    position,
+    target
+  );
 
   return true;
 }
+
+function getCurrentTarget() {
+  var view =
+    viewer.scene.view;
+
+  if (
+    typeof view.getPivot ===
+    "function"
+  ) {
+    return view.getPivot();
+  }
+
+  var direction =
+    getViewDirection(
+      view,
+      null
+    );
+
+  return view.position.clone()
+    .add(
+      direction.clone()
+        .multiplyScalar(
+          view.radius || 1
+        )
+    );
+}
+
+/*
+  Copies the current camera as a startView block for location-config.js.
+*/
+function copyStartView() {
+  if (
+    !viewer ||
+    !viewer.scene ||
+    !viewer.scene.view
+  ) {
+    return;
+  }
+
+  var round = function (n) {
+    return Math.round(n * 1000) / 1000;
+  };
+
+  var position =
+    viewer.scene.view.position;
+
+  var target =
+    getCurrentTarget();
+
+  var snippet =
+    "  startView: {\n" +
+    "    position: [" + [position.x, position.y, position.z].map(round).join(", ") + "],\n" +
+    "    target: [" + [target.x, target.y, target.z].map(round).join(", ") + "]\n" +
+    "  },";
+
+  console.log(
+    "Start view for location-config.js:\n" +
+    snippet
+  );
+
+  var done = function () {
+    setStatus(
+      "Start view copied. Paste it into location-config.js.",
+      "idle"
+    );
+  };
+
+  if (
+    navigator.clipboard &&
+    navigator.clipboard.writeText
+  ) {
+    navigator.clipboard
+      .writeText(snippet)
+      .then(done)
+      .catch(function () {
+        window.prompt("Copy this into location-config.js:", snippet);
+      });
+  } else {
+    window.prompt("Copy this into location-config.js:", snippet);
+  }
+}
+
 
 function fitUsingPotree(
   cloudsToFit,
@@ -8958,6 +9048,12 @@ window.setTimeout(
     "resetView",
     "click",
     fitAllScans
+  );
+
+  addEvent(
+    "copyStartView",
+    "click",
+    copyStartView
   );
 
   addEvent(

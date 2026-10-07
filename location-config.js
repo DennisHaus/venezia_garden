@@ -32,6 +32,14 @@ window.LOCATION_CONFIG = {
   coordinates:
     "45.445947, 12.334221",
 
+  /*
+    Camera when the viewer opens. To set it: move the view in the
+    viewer, click the camera button in the bottom toolbar, and paste
+    the copied block here (replacing this line).
+    Leave it as null to start with the whole first scan in view.
+  */
+  startView: null,
+
   uploadUrl:
     "https://github.com/DennisHaus/pointcloud_viewer/upload/main/scans",
 
