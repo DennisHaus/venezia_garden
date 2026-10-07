@@ -9650,10 +9650,40 @@ function installNavigation() {
     copies the view into the camera. This object only uses that hook;
     all mouse input is handled below.
   */
+  /*
+    Potree renders an overlay scene that belongs to the active
+    controls (sceneControls). Ours stays empty. It is created with
+    the same Scene class Potree's own controls use.
+  */
+  var sceneControls =
+    null;
+
+  var potreeControls =
+    viewer.orbitControls ||
+    viewer.fpControls ||
+    viewer.earthControls ||
+    null;
+
+  if (
+    window.THREE &&
+    typeof window.THREE.Scene ===
+    "function"
+  ) {
+    sceneControls =
+      new window.THREE.Scene();
+  } else if (
+    potreeControls &&
+    potreeControls.sceneControls
+  ) {
+    sceneControls =
+      new potreeControls.sceneControls.constructor();
+  }
+
   var controls = {
     name: "SmoothNavigation",
     enabled: true,
     scene: null,
+    sceneControls: sceneControls,
     setScene: function (scene) { this.scene = scene; },
     update: function (delta) { updateNavigation(delta); },
     stop: function () {},
