@@ -14,20 +14,23 @@ window.LOCATION_CONFIG = {
   `,
 
   brandSubtitle: `
-    copc viewer & point cloud model interface | for collecting, storing and
-    visualizing spatial recordings Giardino Minelli Spada, Venice | Site Visit 2026
+    Recordings Giardino Minelli Spada, Venice | Site Visit 2026, Design Studio Architektur, Langenberg/Voser
+     | Scans on Site by: Martin Zwahlen
     <br><br>
-    developed at Professur Voser, Institute for Landscape and Urban Studies,
-    ETH Zürich | assisted by AI gpt 5.6
+    Viewer inspired by
     <a
       class="subtitle-link"
       href="https://kyotodesignlab.github.io/campus-garden"
       target="_blank"
       rel="noopener"
     >
-      inspired by Campus Garden XR, Kyoto Design Lab
+      Campus Garden XR
     </a>
+    , Kyoto Design Lab
   `,
+
+  coordinates:
+    "45.445947, 12.334221",
 
   uploadUrl:
     "https://github.com/DennisHaus/pointcloud_viewer/upload/main/scans",
