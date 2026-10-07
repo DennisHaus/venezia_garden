@@ -17,6 +17,14 @@ window.LOCATION_CONFIG = {
     Recordings Giardino Minelli Spada, Venice | Site Visit 2026, Design Studio Architektur, Langenberg/Voser
      | Scans on Site by: Martin Zwahlen
     <br><br>
+    See all Places <a
+      class="subtitle-link"
+      href="https://dennishaus.github.io/overview"
+      target="_blank"
+      rel="noopener"
+    >
+      here
+    </a> |
     Viewer inspired by
     <a
       class="subtitle-link"
