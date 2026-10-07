@@ -49,13 +49,9 @@ window.LOCATION_CONFIG = {
   startView: {
   position: [56.107, 118.023, 62.507],
   target: [122.862, 133.846, -8.388]
-},
+  },
 
-  /*
-    Mouse navigation when someone opens the viewer for the first time:
-    "orbit", "fly" or "walk". Visitors can switch in the toolbar.
-  */
-  navigationMode: "fly",
+
 
   uploadUrl:
     "https://github.com/DennisHaus/pointcloud_viewer/upload/main/scans",

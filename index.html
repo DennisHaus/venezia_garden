@@ -246,15 +246,6 @@
         </div>
 
         <div class="viewer-toolbar">
-          <div
-            class="nav-modes"
-            role="group"
-            aria-label="Navigation mode"
-          >
-            <button type="button" data-nav-mode="orbit" aria-pressed="false" title="Orbit around a point (1)">Orbit</button>
-            <button type="button" data-nav-mode="fly" aria-pressed="true" title="Fly like in a game (2)">Fly</button>
-            <button type="button" data-nav-mode="walk" aria-pressed="false" title="Walk, staying level (3)">Walk</button>
-          </div>
 
           <button
             id="resetView"
@@ -312,6 +303,29 @@
                 r="2"
                 fill="currentColor"
               />
+            </svg>
+          </button>
+
+          <button
+            id="toggleProjection"
+            type="button"
+            title="Switch to orthographic view"
+            aria-pressed="false"
+            style="background: none; border: none; cursor: pointer;"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 3 3 7.5v9L12 21l9-4.5v-9L12 3z" />
+              <path d="M3 7.5 12 12l9-4.5" />
+              <path d="M12 12v9" />
             </svg>
           </button>
 
@@ -579,24 +593,24 @@
                   class="hidden"
                 >
                   <label
-                    for="sectionAxis"
+                    for="sectionAngle"
                     class="control-label"
                   >
-                    Vertical axis
+                    Direction (rotation around Z)
+
+                    <output id="sectionAngleValue">0°</output>
                   </label>
 
-                  <select
-                    id="sectionAxis"
-                    class="control-input"
-                  >
-                    <option value="x">
-                      X axis
-                    </option>
-
-                    <option value="y">
-                      Y axis
-                    </option>
-                  </select>
+                  <input
+                    id="sectionAngle"
+                    class="range-input"
+                    type="range"
+                    min="0"
+                    max="179"
+                    step="1"
+                    value="0"
+                    title="0° cuts across X, 90° cuts across Y"
+                  />
                 </div>
 
                 <label
