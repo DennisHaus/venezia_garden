@@ -12,6 +12,18 @@
       "pointCount": null,
       "crs": null,
       "uploadedAt": "2026-10-07"
+    },
+    {
+      "id": "scans-topography-11mio",
+      "name": "Topography 11mio",
+      "filename": "Topography_11Mio.copc.laz",
+      "path": "./scans/Topography_11Mio.copc.laz",
+      "url": "./scans/Topography_11Mio.copc.laz",
+      "format": "copc",
+      "sizeBytes": 61321751,
+      "pointCount": null,
+      "crs": null,
+      "uploadedAt": "2026-10-08"
     }
   ]
 }
