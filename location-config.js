@@ -82,6 +82,17 @@ window.LOCATION_CONFIG = {
   downloadPassword: "Voser",
 
   /*
+    Shift added to the coordinates shown when measuring.
+    Use it when a scan was moved during export, so X, Y and Z show the
+    real values again. Distances and differences are not affected.
+
+    Only a vertical shift (meters):   coordinateShift: 205,
+    All three axes:                   coordinateShift: [2600000, 1200000, 205],
+    No shift:                         coordinateShift: 0,
+  */
+  coordinateShift: 0.48,
+
+  /*
     Usage counters in the Read Me (downloads, renders, documents, visits).
     The counts are stored on a free counter service so that every visitor
     sees the same totals. Use a unique namespace per location.
@@ -220,6 +231,82 @@ window.LOCATION_CONFIG = {
           <strong>Download:</strong>
           Downloads the selected scan as a .copc.laz file.
           A password is required.
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>Measuring</h3>
+
+      <ul>
+        <li>
+          <strong>⌘-click (Mac) or Ctrl-click (Windows):</strong>
+          Click on a point of a scan to see its X, Y and Z coordinates.
+        </li>
+
+        <li>
+          <strong>Second ⌘/Ctrl-click:</strong>
+          Shows the second point and the difference between both points:
+          ΔX, ΔY, ΔZ, the horizontal distance, the 3D distance and the
+          slope in degrees and percent.
+        </li>
+
+        <li>
+          <strong>Third ⌘/Ctrl-click:</strong>
+          Starts a new measurement.
+        </li>
+
+        <li>
+          <strong>Copy / × / Esc:</strong>
+          Copy puts all values on the clipboard, for example to paste
+          into a spreadsheet. × or the Esc key removes the measurement.
+        </li>
+      </ul>
+
+      <p>
+        Values are shown in the units of the scan, usually meters.
+        Only visible points can be measured. When a section is active,
+        only points inside the slice can be picked.
+      </p>
+    </section>
+
+    <section>
+      <h3>Media locations</h3>
+
+      <p>
+        Images, videos and audio files can be linked to a place in the
+        point cloud. They appear there as small icons. Click an icon to
+        open the file.
+      </p>
+
+      <ul>
+        <li>
+          <strong>Set a location:</strong>
+          Open a media file from the library, then Shift + ⌘-click
+          (Mac) or Shift + Ctrl-click (Windows) on a point of a scan.
+          The location applies to the media window in front.
+          Doing it again moves the icon to the new place, also for
+          locations that were already saved.
+        </li>
+
+        <li>
+          <strong>Remove a location:</strong>
+          Shift + ⌘/Ctrl-click on the icon.
+        </li>
+
+        <li>
+          <strong>Hide Icons / Show Icons (or the P key):</strong>
+          Hides or shows all media icons. The choice is remembered.
+        </li>
+
+        <li>
+          <strong>Saving:</strong>
+          New and changed locations are first kept in your browser only.
+          A bar at the bottom right of the viewer shows how many changes
+          there are. "Save for everyone" opens GitHub with the locations
+          already filled in; click "Commit changes" there. After a short
+          moment, the catalog is updated and every visitor sees the
+          icons. "Discard" undoes your changes.
         </li>
       </ul>
     </section>

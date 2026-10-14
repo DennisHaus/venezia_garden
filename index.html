@@ -75,16 +75,28 @@
       </div>
 
       <div class="topbar-actions">
-        <a
-          id="addModel"
-          class="button button-secondary"
-          href="#"
-          target="_blank"
-          rel="noopener"
-          title="Add COPC-Model through Github"
-        >
-          Add Model
-        </a>
+        <div class="topbar-stack">
+          <a
+            id="addModel"
+            class="button button-secondary"
+            href="#"
+            target="_blank"
+            rel="noopener"
+            title="Add scans, images, videos or audio through GitHub"
+          >
+            Add Data
+          </a>
+
+          <button
+            id="toggleMediaIcons"
+            class="button button-secondary"
+            type="button"
+            aria-pressed="true"
+            title="Show or hide the media icons in the viewer (P)"
+          >
+            Hide Icons
+          </button>
+        </div>
 
         <div class="screenshot-export-controls">
           <button
@@ -230,7 +242,7 @@
           </div>
 
           <div class="viewer-help">
-            Orbit: leftMouse · Pan: rightMouse · Zoom: wheel · arrow-Keys · AWSD-Keys · ./, Speed
+            Orbit: leftMouse · Pan: rightMouse · Zoom: wheel · arrow-Keys · AWSD-Keys · ./, Speed · ⌘/Ctrl-click: Measure · P: Media icons
           </div>
         </div>
 
@@ -926,5 +938,7 @@
   <script src="./location-loader.js"></script>
   <script src="./usage-stats.js"></script>
   <script src="./app.js"></script>
+  <script src="./measure.js"></script>
+  <script src="./media-pins.js"></script>
 </body>
 </html>
