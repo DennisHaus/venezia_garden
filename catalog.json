@@ -32,7 +32,7 @@
       "path": "./scans/Venice_dem_1m.copc.laz",
       "url": "./scans/Venice_dem_1m.copc.laz",
       "format": "copc",
-      "sizeBytes": 61323166,
+      "sizeBytes": 71564256,
       "pointCount": null,
       "crs": null,
       "uploadedAt": "2026-10-14"
