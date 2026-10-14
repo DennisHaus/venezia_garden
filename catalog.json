@@ -24,6 +24,18 @@
       "pointCount": null,
       "crs": null,
       "uploadedAt": "2026-10-08"
+    },
+    {
+      "id": "scans-venice-dem-1m",
+      "name": "Venice Dem 1m",
+      "filename": "Venice_dem_1m.copc.laz",
+      "path": "./scans/Venice_dem_1m.copc.laz",
+      "url": "./scans/Venice_dem_1m.copc.laz",
+      "format": "copc",
+      "sizeBytes": 61323166,
+      "pointCount": null,
+      "crs": null,
+      "uploadedAt": "2026-10-14"
     }
   ]
 }
