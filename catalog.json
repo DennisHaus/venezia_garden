@@ -36,6 +36,30 @@
       "pointCount": null,
       "crs": null,
       "uploadedAt": "2026-10-14"
+    },
+    {
+      "id": "scans-venice-google-garden",
+      "name": "Venice Google Garden",
+      "filename": "venice_google_garden.copc.laz",
+      "path": "./scans/venice_google_garden.copc.laz",
+      "url": "./scans/venice_google_garden.copc.laz",
+      "format": "copc",
+      "sizeBytes": 13036732,
+      "pointCount": null,
+      "crs": null,
+      "uploadedAt": "2026-10-14"
+    },
+    {
+      "id": "scans-venice-google-surroundings",
+      "name": "Venice Google Surroundings",
+      "filename": "venice_google_surroundings.copc.laz",
+      "path": "./scans/venice_google_surroundings.copc.laz",
+      "url": "./scans/venice_google_surroundings.copc.laz",
+      "format": "copc",
+      "sizeBytes": 95749996,
+      "pointCount": null,
+      "crs": null,
+      "uploadedAt": "2026-10-14"
     }
   ]
 }
