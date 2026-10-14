@@ -58,7 +58,15 @@ window.LOCATION_CONFIG = {
     around the model). Visitors switch with the eye/orbit button
     or the O key; their choice is remembered.
   */
-  navigationMode: "orbit",
+  navigationMode: "fly",
+
+  /*
+    Which side panels are open when the page opens.
+  */
+  panelsOpenOnStart: {
+    library: false,
+    inspector: true
+  },
 
 
   uploadUrl:
@@ -90,7 +98,7 @@ window.LOCATION_CONFIG = {
     All three axes:                   coordinateShift: [2600000, 1200000, 205],
     No shift:                         coordinateShift: 0,
   */
-  coordinateShift: 0.48,
+  coordinateShift: 0,
 
   /*
     Usage counters in the Read Me (downloads, renders, documents, visits).
@@ -145,12 +153,18 @@ window.LOCATION_CONFIG = {
           <strong>Audio:</strong>
           .mp3 | .wav
         </li>
+
+        <li>
+          <strong>Text:</strong>
+          .txt | .md (Markdown: headings, bold, lists and links
+          are formatted)
+        </li>
       </ul>
 
       <p>
-        Images, videos and audio files open in a small window that can be
-        moved by dragging its title bar. Image and video windows can be
-        resized at their corners.
+        Images, videos, audio and text files open in a small window that
+        can be moved by dragging its title bar. Image, video and text
+        windows can be resized at their corners.
       </p>
     </section>
 
@@ -274,8 +288,8 @@ window.LOCATION_CONFIG = {
       <h3>Media locations</h3>
 
       <p>
-        Images, videos and audio files can be linked to a place in the
-        point cloud. They appear there as small icons. Click an icon to
+        Images, videos, audio and text files can be linked to a place in
+        the point cloud. They appear there as small icons. Click an icon to
         open the file.
       </p>
 
