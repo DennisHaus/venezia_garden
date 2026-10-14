@@ -44,7 +44,7 @@
       "path": "./scans/venice_google_garden.copc.laz",
       "url": "./scans/venice_google_garden.copc.laz",
       "format": "copc",
-      "sizeBytes": 13036732,
+      "sizeBytes": 13402686,
       "pointCount": null,
       "crs": null,
       "uploadedAt": "2026-10-14"
@@ -56,7 +56,7 @@
       "path": "./scans/venice_google_surroundings.copc.laz",
       "url": "./scans/venice_google_surroundings.copc.laz",
       "format": "copc",
-      "sizeBytes": 95749996,
+      "sizeBytes": 95211295,
       "pointCount": null,
       "crs": null,
       "uploadedAt": "2026-10-14"
