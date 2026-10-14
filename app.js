@@ -501,7 +501,7 @@ function updatePanelLayout() {
     inspectorButton.getAttribute(
       "aria-expanded"
     ) ===
-    "true";
+    "false";
 
   var libraryHeight;
   var inspectorHeight;
@@ -4355,7 +4355,7 @@ function isSinglePixelMode() {
     button.getAttribute(
       "aria-pressed"
     ) ===
-    "true"
+    "false"
   );
 }
 
