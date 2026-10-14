@@ -58,14 +58,14 @@ window.LOCATION_CONFIG = {
     around the model). Visitors switch with the eye/orbit button
     or the O key; their choice is remembered.
   */
-  navigationMode: "fly",
+  navigationMode: "orbit",
 
   /*
     Which side panels are open when the page opens.
   */
   panelsOpenOnStart: {
-    library: false,
-    inspector: true
+    library: true,
+    inspector: false
   },
 
 
